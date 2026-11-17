@@ -1,20 +1,22 @@
-Package: bst260project
-Title: project code and narrative
+Package: finalproject
+Title: BST260 Final Project: Analyses of Public Health Datasets
 Version: 0.0.3
 Authors@R:
-    person(given = "yourfirstname",
-           family = "lastname",
+    person(given = "Zipiao",
+           family = "Wan",
            role = c("aut", "cre"),
-           email = "youremail@gmail.com",
-           comment = c(ORCID = "0000-0002-1825-0097"))
-Description: provide text on what your project emphasizes and 
-	accomplishes in three or more complete sentences.
+           email = "wanzp.chiver2016@gmail.com")
+Description: This package holds the code, data and narrative for a BST260
+    (Fall 2026) final project. It documents the provenance of public health
+    datasets, reports descriptive statistics for the variables of interest,
+    and presents analyses with their findings and limitations. The results
+    are published as a pkgdown site on GitHub Pages.
 Depends: R (>= 4.5.0)
-Suggests: knitr, testthat, rmarkdown, pkgdown
+Suggests: knitr, testthat, rmarkdown, pkgdown, quarto
 License: Artistic-2.0
 VignetteBuilder: quarto
 Encoding: UTF-8
-URL: https://github.com/youreponame
-BugReports: https://github.com/youreponame/issues
+URL: https://github.com/Chiver/finalproject, https://chiver.github.io/finalproject
+BugReports: https://github.com/Chiver/finalproject/issues
 Config/roxygen2/version: 8.1.1
 Roxygen: list(markdown=TRUE)
