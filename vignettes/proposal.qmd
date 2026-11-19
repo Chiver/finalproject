@@ -1,0 +1,197 @@
+---
+title: "Project proposal: Product safety in cross-border e-commerce"
+author: "Zipiao Wan"
+date: 2026-11-18
+---
+
+**To:** BST260 Teaching Team, Fall 2026
+
+**From:** Zipiao Wan (GitHub: Chiver)
+
+**Re:** Final project proposal: hazards of imported products sold online, and the role
+of supply-chain reach in foodborne illness
+
+# Motivation
+
+Over the last decade a large share of U.S. consumer purchases has moved to online
+marketplaces (Amazon third-party sellers, Walmart.com Marketplace, Temu, SHEIN,
+AliExpress, TikTok Shop). Many of these products are manufactured abroad and shipped
+directly to consumers, often in small parcels that skip the importer and retailer checks
+used for goods sold in physical stores. Regulators such as the U.S. Consumer Product
+Safety Commission (CPSC) have said that this channel is hard to police. This project asks
+whether that concern shows up in public safety data, and what the data can and cannot tell
+us about it.
+
+The project has two parts, each with its own dataset and vignette:
+
+1. **Consumer products (main analysis, new dataset):** CPSC recall announcements.
+2. **Food (class dataset):** CDC National Outbreak Reporting System (NORS) outbreaks,
+   provided in this package as `waterborne`.
+
+# Main research question
+
+> Among consumer product recalls announced by the U.S. CPSC from 2015 through 2025, are
+> recalls of products **manufactured outside the United States and sold only through online
+> channels** (exposure) more likely to involve **reported injuries or deaths** (outcome) than
+> recalls of products sold only in physical stores?
+
+## Unit of analysis and population
+
+- **Unit of analysis:** one CPSC recall announcement (one recall number).
+- **Population:** all recalls in the CPSC recall database with a recall date between
+  2015-01-01 and 2025-12-31. Joint recalls with Health Canada or Mexico's PROFECO are kept
+  when the U.S. is a recalling jurisdiction. Recalls with no product sold in the U.S. are
+  excluded.
+
+## Exposure: sales channel and origin
+
+The exposure is a four-level categorical variable built from the structured fields
+`ManufacturerCountries`, `Retailers` and `Importers`, and from the free-text "Sold At"
+statement in each recall notice (for example, "Sold exclusively online at Amazon.com from
+March 2021 through May 2023"):
+
+| Level | Definition |
+|---|---|
+| **Cross-border online-only** (exposure of interest) | Made outside the U.S. **and** sold only online (marketplaces or brand websites) |
+| Domestic online-only | Made in the U.S. and sold only online |
+| Omnichannel | Sold both in physical stores and online |
+| **Store-only** (reference) | Sold only in physical stores |
+
+Coding plan:
+
+- A documented R function, `classify_channel()`, will apply a dictionary of regular
+  expressions (for example, `exclusively online`, `online at`, marketplace domain names,
+  `stores nationwide`) to the "Sold At" text. The dictionary will be fixed before any
+  outcome tabulation.
+- **Validation:** I will hand-code a random sample of 100 recalls and report the agreement
+  (sensitivity and specificity) of the automated classification.
+- **Missing data:** recalls with no manufacturing country get an explicit `origin unknown`
+  level, and recalls with no channel statement get `channel unknown`. The primary analysis is
+  complete-case. In a sensitivity analysis the unknown levels are kept as separate
+  categories, to see whether missingness is related to the outcome.
+
+## Outcome
+
+- **Primary outcome (binary):** whether the recall notice reports at least one injury or
+  death (the `Injuries` field). "None reported" or "no injuries" is coded 0. Any reported
+  injury, death or incident involving bodily harm is coded 1.
+- **Secondary outcomes:**
+  - the number of reported incidents (a count parsed from the notice text);
+  - any reported death (binary and rare, so descriptive only);
+  - hazard type (fire/burn, choking, strangulation, laceration, chemical, electrical shock).
+
+## Confounders, chosen before looking at the data
+
+- **Product category** (children's products and toys, furniture, household appliances,
+  micromobility and lithium-ion batteries, clothing and textiles, other). Channel mix and
+  injury risk both differ strongly by category.
+- **Recall year**, which reflects the growth of e-commerce and changes in reporting and
+  enforcement over time, including the COVID-19 period.
+- **Number of units recalled** (log scale), a proxy for how many consumers were exposed.
+- **Intended for children** (yes/no), because children's products fall under stricter
+  rules and injury reports for them may be handled differently.
+
+Hazard type is likely on the causal pathway (for example, imported lithium-ion batteries
+lead to fire hazards, which lead to burns). For that reason it is **not** adjusted for in
+the primary model. It is examined separately as a possible mediator.
+
+## Planned analysis
+
+1. **Descriptive statistics:** counts and percentages of recalls by exposure level, year,
+   product category, manufacturing country (top 10) and hazard type, plus the median and
+   IQR of units recalled. A time-series plot will show the share of cross-border
+   online-only recalls from 2015 to 2025.
+2. **Unadjusted comparison:** the proportion of recalls with reported injuries in each
+   exposure level, with 95% confidence intervals.
+3. **Adjusted model:** logistic regression of the primary outcome on exposure plus the
+   confounders above, reported as adjusted odds ratios with 95% CIs. For the incident
+   counts, a negative binomial model with log(units) as an offset.
+4. **Sensitivity analyses:** treating missing levels as categories; excluding the
+   micromobility/battery category; restricting to 2019-2025.
+
+# Second vignette: foodborne outbreaks and supply-chain reach (class dataset)
+
+The second vignette uses the CDC NORS data from class (`data(waterborne, package =
+"finalproject")`). It asks a parallel question for food: outbreaks spread across several
+states usually come from commercially distributed products, often imported produce or
+packaged foods. These outbreaks are a rough proxy for long, wide supply chains.
+
+> Among foodborne outbreaks reported to NORS, are **multistate outbreaks** (exposure)
+> associated with a **higher proportion of ill persons hospitalized** (outcome) than
+> single-state outbreaks?
+
+- **Unit and population:** one outbreak; all outbreaks whose primary transmission mode is
+  food. NORS flags multistate outbreaks in its location field. I will confirm how that
+  coding works while tidying the data.
+- **Exposure:** multistate vs. single-state (binary).
+- **Outcome:** hospitalizations / illnesses per outbreak (a proportion). It will be modeled
+  with a binomial GLM using illnesses as trials, with a quasi-binomial variant for
+  overdispersion. Outbreaks with missing hospitalization information are excluded from the
+  model, and their share is reported by year.
+- **Confounders, chosen in advance:** etiology (for example, *Salmonella*, STEC, *Listeria*,
+  norovirus), outbreak year (decade), and IFSAC food category.
+- **Data engineering, following the class stubs:**
+  - turn the list-structured records into one tidy data frame;
+  - convert the year/month fields into `Date` objects;
+  - map states to Census regions using `datasets::state.region`;
+  - compare observed with expected outbreak counts by region and IFSAC category;
+  - map the outbreaks with `leaflet`.
+- **Known limitation to discuss:** multistate outbreaks are mostly found through
+  laboratory surveillance (PulseNet), which over-samples severe, culture-confirmed cases.
+  Some of any association with hospitalization may therefore come from how outbreaks are
+  detected rather than from the supply chain itself.
+
+# Data provenance
+
+| Dataset | Source | Access | Status |
+|---|---|---|---|
+| CPSC recalls | U.S. Consumer Product Safety Commission, Recall Retrieval Web Services (SaferProducts.gov REST API, `https://www.saferproducts.gov/RestWebServices/Recall?format=json`) | Public, no API key; queried by `RecallDateStart` / `RecallDateEnd` | **New, requesting approval** |
+| `waterborne` | CDC NORS via Socrata API (`https://data.cdc.gov/api/v3/views/5xkq-dg7x/query.json`) | Included in this package | Class dataset |
+
+For the CPSC data, a script in `inst/scripts/` will download the records, store the
+retrieval date and query parameters, and save a flattened data frame as
+`data/cpscrecalls.rda`. The data will be documented in `R/data.R` like the other package
+datasets. The raw JSON will not be changed. All parsing and recoding steps will be written
+as package functions so they can be re-run when CPSC updates the database.
+
+# Planned package deliverables
+
+- `vignettes/proposal.qmd` (this document)
+- `vignettes/cpsc_crossborder.qmd`: provenance, descriptive statistics, models and
+  findings for the main question
+- `vignettes/nors_multistate.qmd`: tidying, descriptive statistics, models and findings for
+  the food question
+- R functions with roxygen documentation: `fetch_cpsc_recalls()`, `classify_channel()`,
+  `parse_injuries()`, `tidy_waterborne()`
+- A README summarizing the questions, data and main findings, and the pkgdown site at
+  <https://chiver.github.io/finalproject>
+
+# Expected limitations
+
+- **Recalls are a selected sample.** Foreign online sellers often do not cooperate with
+  CPSC, which then issues unilateral warnings instead of recalls. Recall data therefore
+  probably *under-represent* hazardous cross-border products, so a null result would not
+  mean those products are safe.
+- **Injury reports depend on how complaints are collected.** These channels differ between
+  marketplaces and physical retailers, so there may be differential outcome
+  misclassification.
+- **Exposure comes from text classification.** It may be misclassified, which the
+  validation sample is meant to measure.
+- **The estimates are associations, not causal effects.**
+
+# Request to the teaching team
+
+The CPSC recall data are not one of the class datasets, so **I am requesting approval to
+use them** for the main vignette. If the teaching team would prefer two class datasets, I
+will keep the NORS vignette and replace the CPSC analysis with an analysis of `cdcfiremort`
+together with `gunleg`. I would also welcome feedback on whether the four-level exposure
+definition is too fine-grained for the expected sample size.
+
+# Timeline
+
+| Dates | Milestone |
+|---|---|
+| Nov 19 – Nov 24 | Retrieve and document CPSC data; tidy `waterborne` |
+| Nov 25 – Dec 1 | Exposure/outcome coding, validation sample, descriptive statistics |
+| Dec 2 – Dec 8 | Regression models, sensitivity analyses, figures |
+| Dec 9 onward | Write findings and limitations; final pkgdown build |
